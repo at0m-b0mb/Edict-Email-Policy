@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Edict — what your domain declares</title>
+<meta name="description" content="An offline grader for the SPF, DMARC, DKIM and CAA records a domain publishes, including the SPF ten-lookup budget — and it resolves no DNS to do it.">
+<meta property="og:title" content="Edict — what your domain declares">
+<meta property="og:description" content="An offline grader for the SPF, DMARC, DKIM and CAA records a domain publishes, including the SPF ten-lookup budget — and it resolves no DNS to do it.">
+<meta property="og:type" content="website">
+<link rel="icon" href="assets/mark.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F3F1EC; --surface:#FFFFFF; --sunken:#EBE7DE;
+  --ink:#1B1813; --muted:#575144; --faint:#6B6554;
+  --rule:#DCD6C9; --rule-strong:#C4BCAA;
+  --brass:#7A5D18; --shine:#C39B24;
+  --good:#2C6249; --good-wash:#E9F3ED;
+  --warn:#8A5410; --warn-wash:#FAF0DF;
+  --alert:#8C1F16; --alert-wash:#FBE9E7;
+  --serif:"Source Serif 4",Iowan Old Style,Palatino,Georgia,serif;
+  --sans:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+  --paper:#000000; --surface:#131312; --sunken:#0A0A09;
+  --ink:#F3F0E9; --muted:#A29C91; --faint:#8C877C;
+  --rule:#2B2B28; --rule-strong:#3D3C38;
+  --brass:#D9B75C; --shine:#F1C84B;
+  --good:#67BE94; --good-wash:#0D1F16;
+  --warn:#DDA356; --warn-wash:#251A0B;
+  --alert:#EE8B82; --alert-wash:#2A100E;
+}}
+:root[data-theme="dark"]{
+  --paper:#000000; --surface:#131312; --sunken:#0A0A09;
+  --ink:#F3F0E9; --muted:#A29C91; --faint:#8C877C;
+  --rule:#2B2B28; --rule-strong:#3D3C38;
+  --brass:#D9B75C; --shine:#F1C84B;
+  --good:#67BE94; --good-wash:#0D1F16;
+  --warn:#DDA356; --warn-wash:#251A0B;
+  --alert:#EE8B82; --alert-wash:#2A100E;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);
+     font-size:17px;line-height:1.65;-webkit-font-smoothing:antialiased}
+.wrap{max-width:860px;margin:0 auto;padding:0 24px}
+a{color:var(--brass);text-underline-offset:3px}
+a:hover{color:var(--shine)}
+code{font-family:var(--mono);font-size:.88em;background:var(--sunken);
+     padding:.12em .36em;border-radius:3px}
+pre{font-family:var(--mono);font-size:14px;line-height:1.6;background:var(--surface);
+    border:1px solid var(--rule);border-radius:8px;padding:16px 18px;overflow-x:auto}
+pre code{background:none;padding:0;font-size:inherit}
+
+header.top{border-bottom:1px solid var(--rule);background:var(--sunken)}
+header.top .wrap{display:flex;align-items:center;gap:14px;padding-top:14px;padding-bottom:14px}
+header.top img{width:34px;height:34px;border-radius:8px}
+.wordmark{font-family:var(--serif);font-size:21px;font-weight:600;letter-spacing:.14em}
+.tagline{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--faint)}
+header.top nav{margin-left:auto;display:flex;gap:18px;align-items:center;font-size:14px}
+button.theme{background:none;border:1px solid var(--rule-strong);color:var(--muted);
+  border-radius:999px;padding:5px 13px;font:inherit;font-size:13px;cursor:pointer}
+button.theme:hover{border-color:var(--brass);color:var(--ink)}
+
+.hero{padding:72px 0 8px;text-align:center}
+.hero h1{font-family:var(--serif);font-size:clamp(34px,6vw,54px);line-height:1.1;
+         margin:0 0 18px;font-weight:400}
+.hero p.lede{font-size:19px;color:var(--muted);max-width:640px;margin:0 auto 26px}
+.badges{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:26px}
+.badges span{font-size:12px;letter-spacing:.04em;border:1px solid var(--rule-strong);
+  color:var(--muted);border-radius:999px;padding:4px 12px}
+.cta{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.cta a{display:inline-block;padding:11px 22px;border-radius:6px;text-decoration:none;
+  font-size:15px;font-weight:600;border:1px solid var(--brass)}
+.cta a.primary{background:var(--brass);color:var(--paper)}
+.cta a.primary:hover{background:var(--shine);color:#1B1813}
+.cta a.ghost{color:var(--brass)}
+.cta a.ghost:hover{background:var(--surface)}
+
+section{padding:52px 0}
+h2{font-family:var(--serif);font-size:27px;font-weight:400;margin:0 0 18px}
+.shot{margin:34px 0 0;border:1px solid var(--rule);border-radius:10px;overflow:hidden;
+      background:var(--surface)}
+.shot img{display:block;width:100%}
+.caption{font-size:13px;color:var(--faint);text-align:center;margin-top:10px}
+
+.sig{background:var(--surface);border:1px solid var(--rule);border-left:3px solid var(--brass);
+     border-radius:8px;padding:18px 22px;margin:24px 0;color:var(--muted);font-size:16px}
+.sig strong{color:var(--ink);font-weight:600}
+
+table{width:100%;border-collapse:collapse;font-size:15px}
+th,td{text-align:left;padding:11px 12px;border-bottom:1px solid var(--rule);vertical-align:top}
+th{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);font-weight:600}
+td:first-child{white-space:nowrap;font-weight:600;width:1%}
+
+.honest{background:var(--warn-wash);border:1px solid var(--rule);
+        border-left:3px solid var(--warn);border-radius:8px;padding:22px 24px}
+.honest h2{margin-top:0;font-size:23px}
+.honest p{margin:0;color:var(--muted)}
+
+.family{border-top:1px solid var(--rule);padding:44px 0 16px}
+.family h2{font-size:21px;text-align:center}
+.family .row{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin-top:22px}
+.family a{display:flex;align-items:center;gap:9px;text-decoration:none;color:var(--ink);
+  border:1px solid var(--rule);border-radius:999px;padding:7px 15px 7px 8px;font-size:14px;
+  background:var(--surface)}
+.family a:hover{border-color:var(--brass)}
+.family a.self{opacity:.45;pointer-events:none}
+.family img{width:22px;height:22px;border-radius:6px}
+.family .what{color:var(--faint);font-size:12px}
+
+footer{border-top:1px solid var(--rule);margin-top:34px;padding:30px 0 56px;
+  color:var(--faint);font-size:13px;text-align:center}
+footer a{color:var(--faint)}
+@media(max-width:560px){
+  .hero{padding-top:48px}
+  header.top nav{gap:12px;font-size:13px}
+  .tagline{display:none}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <img src="assets/mark.png" alt="">
+    <div>
+      <div class="wordmark">EDICT</div>
+      <div class="tagline">what your domain declares</div>
+    </div>
+    <nav>
+      <a href="https://github.com/at0m-b0mb/Edict-Email-Policy">GitHub</a>
+      <a href="https://github.com/at0m-b0mb/Edict-Email-Policy/releases/latest">v1.0.0</a>
+      <button class="theme" id="t" type="button">Dark</button>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="hero">
+    <h1>Who is allowed to send as you?</h1>
+    <p class="lede">An offline grader for the SPF, DMARC, DKIM and CAA records a domain publishes, including the SPF ten-lookup budget — and it resolves no DNS to do it.</p>
+    <div class="badges">
+      <span>Python 3.10+</span><span>PyQt6</span>
+      <span>network never</span><span>515 tests</span><span>MIT</span>
+    </div>
+    <div class="cta">
+      <a class="primary" href="https://github.com/at0m-b0mb/Edict-Email-Policy">View on GitHub</a>
+      <a class="ghost" href="https://github.com/at0m-b0mb/Edict-Email-Policy/archive/refs/tags/v1.0.0.zip">Download v1.0.0</a>
+    </div>
+  </div>
+
+  <section>
+    <h2>Why</h2>
+    <p>A few short lines in your DNS decide who the world believes may send mail as you. Most domains publish them once, copy a line from a provider's help page, and never look again.</p>
+        <p>They age badly. An SPF record quietly runs out of its ten DNS lookups and stops working, a DMARC policy sits at <code>p=none</code> for years rejecting nothing, a DKIM key stays at 1024 bits.</p>
+    <div class="sig"><strong>What it draws.</strong> The lookup budget — the ten DNS lookups SPF is allowed, drawn as segments, each labelled with the mechanism that spent it, with the limit as a hard line and the overflow past it.</div>
+    <picture class="shot">
+      <source media="(prefers-color-scheme: dark)" srcset="assets/screens-dark.png">
+      <img src="assets/screens.png" alt="Edict reading two samples">
+    </picture>
+    <p class="caption">The reader on two of its bundled samples.</p>
+  </section>
+
+  <section>
+    <h2>What it checks</h2>
+    <table>
+      <thead><tr><th>Signal</th><th>What trips it</th></tr></thead>
+      <tbody>
+            <tr><td>SPF ending</td><td><code>+all</code>, <code>?all</code>, or a sound <code>-all</code></td></tr>
+            <tr><td>SPF budget</td><td>the ten-lookup limit, and how close you are</td></tr>
+            <tr><td>SPF records</td><td>more than one, which is a permanent error</td></tr>
+            <tr><td>DMARC</td><td><code>p=none</code> enforces nothing; pct below 100</td></tr>
+            <tr><td>Reporting</td><td>no <code>rua</code> means no reports reach you</td></tr>
+            <tr><td>DKIM</td><td>key size read from the published <code>p=</code></td></tr>
+            <tr><td>CAA</td><td>whether anyone may issue a certificate for you</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <div class="honest">
+      <h2>The honest part</h2>
+      <p>Edict reads the records you paste. It resolves no DNS and does not follow <code>include:</code> chains, so the lookup count is a floor rather than a total — and the interface says so rather than rounding it off.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Install</h2>
+<pre><code>git clone https://github.com/at0m-b0mb/Edict-Email-Policy.git
+cd Edict-Email-Policy
+python3 -m pip install -r requirements.txt
+
+python3 -m edict                      # the window
+python3 -m edict samples/             # the command line
+python3 -m pytest -q                   # 515 tests</code></pre>
+    <p>The engine and the command line need no dependencies at all — only the
+    standard library. PyQt6 is required solely for the window.</p>
+  </section>
+
+  <div class="family">
+    <h2>One of seven readers</h2>
+    <div class="row">
+        <a href="https://at0m-b0mb.github.io/Herald-Email-Headers/"><img src="assets/mark-herald.png" alt=""><span>Herald</span><span class="what">read the headers</span></a>
+        <a href="https://at0m-b0mb.github.io/Signet-JWT-Inspector/"><img src="assets/mark-signet.png" alt=""><span>Signet</span><span class="what">read the seal</span></a>
+        <a href="https://at0m-b0mb.github.io/Lintel-HTTP-Headers/"><img src="assets/mark-lintel.png" alt=""><span>Lintel</span><span class="what">mind the headers</span></a>
+        <a href="https://at0m-b0mb.github.io/Attest-X509/"><img src="assets/mark-attest.png" alt=""><span>Attest</span><span class="what">read the certificate</span></a>
+        <a href="#" class="self"><img src="assets/mark-edict.png" alt=""><span>Edict</span><span class="what">what your domain declares</span></a>
+        <a href="https://at0m-b0mb.github.io/Vigil-Secret-Scanner/"><img src="assets/mark-vigil.png" alt=""><span>Vigil</span><span class="what">find it before they do</span></a>
+        <a href="https://at0m-b0mb.github.io/Caveat-Shell-Reader/"><img src="assets/mark-caveat.png" alt=""><span>Caveat</span><span class="what">read before you run</span></a>
+    </div>
+  </div>
+
+  <footer>
+    Built by <a href="https://github.com/at0m-b0mb">at0m-b0mb</a> ·
+    MIT licensed · <a href="https://github.com/at0m-b0mb/Edict-Email-Policy">source</a><br>
+    Set in Source Serif and Inter. Warm paper by default, true black in the dark.
+  </footer>
+
+</div>
+<script>
+(function(){
+  var r=document.documentElement,b=document.getElementById('t');
+  try{var s=localStorage.getItem('theme'); if(s) r.setAttribute('data-theme',s);}catch(e){}
+  function cur(){ var a=r.getAttribute('data-theme');
+    if(a) return a;
+    return matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'; }
+  function paint(){ b.textContent = cur()==='dark' ? 'Light' : 'Dark'; }
+  paint();
+  b.addEventListener('click',function(){
+    var n = cur()==='dark' ? 'light' : 'dark';
+    r.setAttribute('data-theme',n);
+    try{localStorage.setItem('theme',n);}catch(e){}
+    paint();
+  });
+})();
+</script>
+</body>
+</html>
