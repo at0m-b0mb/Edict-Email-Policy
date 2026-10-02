@@ -63,6 +63,6 @@ First release.
   reader, the DER key-size walk, the full grading pipeline, the command line in
   both output modes, and a WCAG-AA contrast suite covering every text/background
   pairing in both themes.
-- Off-screen screenshot capture, and a repository-art generator that imports the
-  engine and draws the card from a real graded sample, held inside GitHub's safe
-  border by a registered-rectangle check.
+- Off-screen screenshot capture of the window in both themes, and a deterministic
+  repository-art generator whose social card is held inside GitHub's safe border
+  by a registered-rectangle check.
