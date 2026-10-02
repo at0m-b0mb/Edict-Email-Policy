@@ -36,6 +36,7 @@ from .model import (
     Finding,
     Grade,
     Pillar,
+    RawRecord,
     RecordKind,
     Severity,
     SpfPolicy,
@@ -95,18 +96,63 @@ def check_spf(zone: Zone, out: _Sink) -> None:
                 "ends in -all.", 30, "spf")
         return
 
-    if len(zone.spf) > 1:
+    several = len(zone.spf) > 1
+    if several:
         out.add(Severity.ALERT, f"{len(zone.spf)} SPF records published",
-                "A domain may publish exactly one SPF record. With more than "
-                "one a receiver must return permerror and use none of them, so "
-                "two careful records protect less than one. Merge them into a "
-                "single v=spf1 string.", 26, "spf")
+                f"A domain may publish exactly one SPF record. With more than "
+                f"one a receiver must return permerror and use none of them, so "
+                f"two careful records protect less than one. Each record given, "
+                f"in order: {_spf_endings(zone)}. Merge them into a single "
+                f"v=spf1 string{_merge_warning(zone)}.", 26, "spf")
 
     policy = zone.spf[0]
+    mark = len(out.findings)
     _check_spf_ending(policy, out)
     _check_spf_budget(policy, out)
     _check_spf_mechanisms(policy, out)
     _check_spf_syntax(policy, out)
+
+    if several:
+        # Only the first record is examined in detail, and with several
+        # published a receiver uses none of them — so a green finding here
+        # would be reassurance about a policy that is not in force, and it
+        # would be drawn from whichever record happened to be pasted first.
+        # The endings of all of them are listed in the alert above instead.
+        out.findings[mark:] = [f for f in out.findings[mark:]
+                               if f.severity is not Severity.GOOD]
+
+
+def _spf_ending_of(policy: SpfPolicy) -> str:
+    """How one record finishes, in the words the record itself used."""
+    qual = policy.all_qualifier
+    if qual is not None:
+        for m in policy.mechanisms:
+            if m.is_all:
+                return m.rendered
+        return f"{qual}all"
+    if "redirect" in policy.modifiers:
+        return f"redirect={policy.modifiers['redirect']}"
+    return "no all mechanism"
+
+
+def _spf_endings(zone: Zone) -> str:
+    return "; ".join(f"#{i} ends in {_spf_ending_of(pol)}"
+                     for i, pol in enumerate(zone.spf, start=1))
+
+
+def _merge_warning(zone: Zone) -> str:
+    """Name a ``+all`` hiding among several records, where it cannot be missed.
+
+    A bare ``all`` is a pass too, and is named in the record's own words rather
+    than normalised, because the two spellings read very differently to the
+    person who wrote one of them by accident.
+    """
+    wide = [pol for pol in zone.spf if pol.all_qualifier == "+"]
+    if not wide:
+        return ""
+    return (f" — and take care which ending survives the merge: "
+            f"{_spf_ending_of(wide[0])} authorises every sender on the "
+            f"internet")
 
 
 def _check_spf_ending(policy: SpfPolicy, out: _Sink) -> None:
@@ -146,9 +192,10 @@ def _check_spf_ending(policy: SpfPolicy, out: _Sink) -> None:
                 f"at all, with the added cost of looking protected.", 16, "spf")
     else:
         out.add(Severity.ALERT, "SPF ends in +all — anyone may send as you",
-                f"A leading + makes all a pass, so the record {meaning}. Every "
-                f"spammer on the internet is authorised by this one character. "
-                f"It is almost always a typo for -all.", 34, "spf")
+                f"A leading + makes all a pass, so the record asks receivers "
+                f"to {meaning}. Every spammer on the internet is authorised by "
+                f"this one character. It is almost always a typo for -all.",
+                34, "spf")
 
 
 def _check_spf_budget(policy: SpfPolicy, out: _Sink) -> None:
@@ -557,8 +604,39 @@ def check_zone(zone: Zone, out: _Sink) -> None:
     _check_neighbours(zone, out)
 
 
+def _untyped_lines(zone: Zone) -> list[RawRecord]:
+    """Lines Edict read but could not give a record type.
+
+    These are the bare fragments a paste arrives with — no owner name, no RR
+    type, no quotes to mark them as TXT data, and nothing inside them that says
+    what they are. They are listed in the report's own "read, but not graded"
+    notes, and they are the reason the absence findings below are careful about
+    the word *absent*: a record Edict failed to read is not a record the reader
+    failed to publish.
+    """
+    from .records import NEIGHBOUR_TAGS
+
+    return [r for r in zone.other
+            if not r.rtype and not r.quoted and r.kind is RecordKind.TXT
+            and r.tag.lower() not in NEIGHBOUR_TAGS]
+
+
+def _untyped_tail(n: int) -> str:
+    return (f"{n} line{'s' if n > 1 else ''} in this paste could not be typed "
+            f"at all — they are listed with the report — so one of them may be "
+            f"the record Edict is looking for. Nothing is deducted for a line "
+            f"Edict simply could not read.")
+
+
 def _check_mx(zone: Zone, out: _Sink) -> None:
     if not zone.mx:
+        untyped = _untyped_lines(zone)
+        if untyped:
+            out.add(Severity.NOTICE, "No MX record recognised",
+                    f"Nothing among these records could be read as an MX, so "
+                    f"Edict cannot say where mail for this domain is "
+                    f"delivered. {_untyped_tail(len(untyped))}", 0, "zone")
+            return
         out.add(Severity.NOTICE, "No MX record among the records given",
                 "Nothing here says where mail for this domain should be "
                 "delivered, so the domain may not receive mail at all. If that "
@@ -585,6 +663,14 @@ def _check_mx(zone: Zone, out: _Sink) -> None:
 
 def _check_caa(zone: Zone, out: _Sink) -> None:
     if not zone.caa:
+        untyped = _untyped_lines(zone)
+        if untyped:
+            out.add(Severity.NOTICE, "No CAA record recognised",
+                    f"Nothing among these records could be read as a CAA "
+                    f"record, so Edict cannot say which certificate "
+                    f"authorities are allowed to issue for this name. "
+                    f"{_untyped_tail(len(untyped))}", 0, "zone")
+            return
         out.add(Severity.NOTICE, "No CAA record among the records given",
                 "Without CAA, any certificate authority in the world may issue "
                 "a certificate for this name, and a certificate for your mail "

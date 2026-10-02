@@ -18,7 +18,7 @@ ever resolving a name.
 ![Python](https://img.shields.io/badge/Python-3.10%2B-7A5D18?style=flat-square)
 ![PyQt6](https://img.shields.io/badge/UI-PyQt6-7A5D18?style=flat-square)
 ![Offline](https://img.shields.io/badge/network-never-2C6249?style=flat-square)
-![Tests](https://img.shields.io/badge/tests-480%20passing-2C6249?style=flat-square)
+![Tests](https://img.shields.io/badge/tests-514%20passing-2C6249?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-847D6E?style=flat-square)
 
 </div>
@@ -73,7 +73,10 @@ a careful SPF record into no SPF record at all.
 RFC 7208 allows a receiver **ten DNS lookups** to evaluate your SPF record. At
 the eleventh it stops, returns `permerror`, and most receivers treat that as
 though you published nothing. `include`, `a`, `mx`, `ptr`, `exists` and
-`redirect` each spend one; `ip4`, `ip6` and `all` spend none. Add a provider,
+`redirect` each spend one; `ip4`, `ip6` and `all` spend none. A `redirect=` in a
+record that also has an `all` spends nothing either — §6.1 tells the receiver to
+ignore it, because `all` always matches first — so Edict does not bill you for a
+lookup nobody makes. Add a provider,
 and a record that worked yesterday is inert today — with no change on your side,
 because the lookups they added are inside *their* record.
 
@@ -183,6 +186,8 @@ example.com.  300 IN TXT  "v=spf1 include:_spf.provider.net ~all"   zone file
 v=spf1 mx -all                                                      a bare string
 example.com.  300 IN MX   10 mail.example.com.                      an MX line
 example.com.      IN CAA  0 issue "letsencrypt.org"                 a CAA line
+10 mail.example.com.                                                dig +short MX
+0 issue "letsencrypt.org"                                           dig +short CAA
 sel._domainkey.example.com. IN TXT ( "v=DKIM1; k=rsa; "             wrapped
                                      "p=MIIBIjANBgkq..." )          across lines
 ```
@@ -229,7 +234,7 @@ python3 -m pip install -r requirements-dev.txt
 python3 -m pytest -q
 ```
 
-480 tests cover the record reader (including the trap where `mx`, `a` and `ptr`
+514 tests cover the record reader (including the trap where `mx`, `a` and `ptr`
 name both an SPF mechanism and a DNS record type), the SPF budget arithmetic,
 the DMARC tag reader, the DER walk that recovers a key's size from `p=`, the
 full grading pipeline against the sample set, the command line in both output
@@ -254,7 +259,7 @@ edict/
     main_window.py   the grader itself
   cli.py           the same engine on the command line
 samples/           five synthetic zones spanning A+ to F
-tests/             480 tests, including the contrast suite
+tests/             514 tests, including the contrast suite
 tools/             screenshot capture and repository art
 ```
 

@@ -13,13 +13,20 @@ First release.
   `dig` answer sections, `dig +short` fragments and bare policy strings, mixed
   freely. Quotes come off, split TXT chunks are joined the way a resolver joins
   them, parenthesised continuations are folded across lines, and comment and
-  blank lines are skipped.
+  blank lines are skipped. The two shapes `dig +short` prints with no RR type of
+  their own — `10 mail.example.com.` and `0 issue "letsencrypt.org"` — are typed
+  as MX and CAA on sight; anything Edict still cannot type is listed line by
+  line, and the absence findings say *not recognised* rather than *not there*.
 - **SPF** — mechanisms parsed in evaluation order with their qualifiers, and the
   **ten-lookup budget counted**: `include`, `a`, `mx`, `ptr`, `exists` and
-  `redirect` spend one each, `ip4`, `ip6` and `all` spend none. Flags `+all`,
+  `redirect` spend one each, `ip4`, `ip6` and `all` spend none — and a
+  `redirect=` in a record that also has an `all` spends nothing, because
+  RFC 7208 §6.1 makes the receiver ignore it. Flags `+all`,
   `?all`, `~all`, a missing `all`, `ptr`, ranges that cover the whole internet,
   terms stranded after `all`, malformed addresses, and more than one published
-  record.
+  record — and when there is more than one, every record's ending is named and
+  no reassuring SPF finding is emitted, because a receiver uses none of them and
+  a `+all` must not be able to hide behind a `-all`.
 - **DMARC** — every tag read, including where the record *lives*: a policy
   published anywhere but `_dmarc` is correct text nothing will ever look at.
   Flags `p=none`, `p=quarantine`, `pct` below 100, an `sp` weaker than `p`, a
@@ -52,7 +59,7 @@ First release.
 ### Engineering
 - The engine (`edict.core`) is pure standard library — no third-party imports,
   no network, no sockets, no name resolution of any kind.
-- 480 tests across the record reader, the SPF budget arithmetic, the DMARC tag
+- 514 tests across the record reader, the SPF budget arithmetic, the DMARC tag
   reader, the DER key-size walk, the full grading pipeline, the command line in
   both output modes, and a WCAG-AA contrast suite covering every text/background
   pairing in both themes.

@@ -35,6 +35,7 @@ from PyQt6.QtWidgets import (
 from ..core import dkim as dkim_mod
 from ..core.grade import analyze
 from ..core.model import SPF_LOOKUP_LIMIT, Severity, Zone
+from ..core.spf import modifier_note
 from . import theme
 from .budget import BudgetGauge, PolicyStrength
 from .widgets import Card, Chip, hrule, key_value, label, mini_label
@@ -353,8 +354,24 @@ class MainWindow(QWidget):
             lay.addStretch(1)
             lay.addWidget(label("1 lookup" if mech.cost else "free", "Faint"))
             card.add(row)
+        # A modifier sits in the same table as the mechanisms and is annotated
+        # the same way, because the gauge above and this table have to agree
+        # about whether a redirect= spends one of the ten lookups.
         for name, value in policy.modifiers.items():
-            card.add(key_value(name, value, self._mode, mono=True))
+            row = QWidget()
+            lay = QHBoxLayout(row)
+            lay.setContentsMargins(0, 0, 0, 0)
+            lay.setSpacing(theme.SPACE["snug"])
+            term = QLabel(f"{name}={value}")
+            term.setStyleSheet(
+                f"{theme.font_css('mono')} "
+                f"color: {theme.color('ink_muted', self._mode)};")
+            lay.addWidget(term)
+            lay.addStretch(1)
+            note = label(modifier_note(policy, name), "Faint")
+            note.setWordWrap(False)   # one line, like the mechanism rows above
+            lay.addWidget(note)
+            card.add(row)
         return card
 
     def _mech_token(self, mech) -> str:

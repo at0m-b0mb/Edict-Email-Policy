@@ -272,6 +272,53 @@ def test_two_spf_records_break_spf_entirely():
     assert _stance(zone, "spf") is Stance.BROKEN
 
 
+def _two_records(first="v=spf1 -all", second="v=spf1 +all"):
+    return (zone_text(spf=first)
+            + f'e.example. 300 IN TXT "{second}"\n')
+
+
+def test_several_spf_records_leave_no_reassuring_spf_finding():
+    """A green note about one of several records is a green note about a
+    policy no receiver will use."""
+    zone = analyze(_two_records())
+    good = [f.title for f in zone.findings
+            if f.category == "spf" and f.severity is Severity.GOOD]
+    assert good == []
+    assert "SPF ends in -all" not in _titles(zone)
+
+
+def test_every_spf_records_ending_is_named_when_there_are_several():
+    """The dangerous record must not be able to hide behind the careful one."""
+    zone = analyze(_two_records())
+    alert = [f for f in zone.findings if f.title == "2 SPF records published"][0]
+    assert "-all" in alert.detail
+    assert "+all" in alert.detail
+
+
+def test_a_plus_all_in_a_second_record_reaches_the_report():
+    zone = analyze(_two_records())
+    whole = " ".join(f.title + " " + f.detail for f in zone.findings)
+    assert "+all" in whole
+
+
+def test_a_bare_all_among_several_records_is_called_out_in_its_own_words():
+    zone = analyze(_two_records(second="v=spf1 all"))
+    alert = [f for f in zone.findings if f.title == "2 SPF records published"][0]
+    assert "#2 ends in all" in alert.detail
+    assert "all authorises every sender on the internet" in alert.detail
+
+
+def test_a_record_with_no_all_is_listed_by_what_it_ends_with():
+    zone = analyze(_two_records(second="v=spf1 redirect=o.example"))
+    alert = [f for f in zone.findings if f.title == "2 SPF records published"][0]
+    assert "redirect=o.example" in alert.detail
+
+
+def test_one_spf_record_still_gets_its_good_finding():
+    zone = analyze(zone_text(spf="v=spf1 mx -all"))
+    assert "SPF ends in -all" in _titles(zone)
+
+
 @pytest.mark.parametrize("count,title", [
     (2, "SPF fits in 3 of 10 DNS lookups"),
     (6, "SPF uses 7 of 10 DNS lookups"),
@@ -282,6 +329,24 @@ def test_the_budget_finding_tracks_the_count(count, title):
     spf = "v=spf1 mx " + " ".join(f"include:s{i}.example"
                                   for i in range(count)) + " -all"
     assert title in _titles(analyze(zone_text(spf=spf)))
+
+
+def test_a_redirect_ignored_by_an_all_does_not_break_a_record_that_fits():
+    """RFC 7208 §6.1 — the record below really costs ten lookups, not eleven."""
+    spf = ("v=spf1 " + " ".join(f"include:s{i}.example" for i in range(10))
+           + " -all redirect=legacy.example")
+    zone = analyze(zone_text(spf=spf))
+    assert _stance(zone, "spf") is Stance.ENFORCING
+    assert "SPF needs 11 DNS lookups — the limit is 10" not in _titles(zone)
+    assert "SPF already uses 10 of 10 DNS lookups" in _titles(zone)
+
+
+def test_the_budget_never_charges_for_a_term_the_report_calls_unused():
+    zone = analyze(zone_text(spf="v=spf1 mx -all redirect=legacy.example"))
+    assert "SPF has both an all mechanism and a redirect" in _titles(zone)
+    budget = [f for f in zone.findings if "DNS lookups" in f.title][0]
+    assert budget.title == "SPF fits in 1 of 10 DNS lookups"
+    assert "redirect" not in budget.detail
 
 
 def test_going_over_budget_breaks_spf_whatever_the_ending_says():
@@ -429,6 +494,40 @@ def test_a_strong_key_beside_a_weak_one_sets_the_stance():
 def test_a_missing_mx_is_noticed():
     assert "No MX record among the records given" in _titles(
         analyze(zone_text(mx=False)))
+
+
+# A finding that contradicts the paste is worse than no finding. These three
+# are the `dig +short` shapes: no owner, no RR type, nothing but the data.
+
+def test_a_bare_dig_short_mx_line_is_read_as_an_mx():
+    zone = analyze("v=spf1 -all\n10 mail.example.com.\n")
+    assert [(m.preference, m.host) for m in zone.mx] == [(10, "mail.example.com")]
+    assert "No MX record among the records given" not in _titles(zone)
+
+
+def test_a_bare_dig_short_caa_line_is_read_as_a_caa():
+    zone = analyze('v=spf1 -all\n0 issue "letsencrypt.org"\n')
+    assert [(c.flags, c.tag, c.value) for c in zone.caa] == [
+        (0, "issue", "letsencrypt.org")]
+    assert "No CAA record among the records given" not in _titles(zone)
+
+
+def test_a_quoted_bare_string_is_typed_enough_to_keep_the_penalty():
+    # `dig +short TXT` prints quoted strings, and a quoted string is TXT data
+    # whatever is inside it — so "no MX among the records given" is just true.
+    zone = analyze('"v=spf1 -all"\n"google-site-verification=abc"\n')
+    mx = [f for f in zone.findings if f.title.startswith("No MX record")][0]
+    assert mx.title == "No MX record among the records given"
+    assert mx.points == 5
+
+
+def test_an_absence_finding_costs_nothing_while_lines_went_untyped():
+    zone = analyze("v=spf1 -all\nsome line nobody can type\n")
+    for stem in ("No MX record", "No CAA record"):
+        hit = [f for f in zone.findings if f.title.startswith(stem)][0]
+        assert hit.title.endswith("recognised")
+        assert hit.points == 0
+        assert "1 line" in hit.detail
 
 
 def test_a_null_mx_is_read_as_a_deliberate_declaration():

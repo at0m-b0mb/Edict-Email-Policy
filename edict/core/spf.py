@@ -41,8 +41,10 @@ MECHANISM_COST = {
     "exists": 1,
 }
 
-# ``redirect`` is a mechanism in all but name and costs a lookup. ``exp`` only
-# fetches an explanation string after a failure, and RFC 7208 exempts it.
+# ``redirect`` is a mechanism in all but name and costs a lookup — unless the
+# record also has an ``all``, which RFC 7208 §6.1 says makes the receiver ignore
+# the redirect entirely. ``exp`` only fetches an explanation string after a
+# failure, and RFC 7208 exempts it from the limit.
 MODIFIER_COST = {"redirect": 1, "exp": 0}
 
 QUALIFIERS = "+-~?"
@@ -167,6 +169,21 @@ def parse_spf(value: str, owner: str = "", chunks: int = 1) -> SpfPolicy:
                       cost=MECHANISM_COST[kind], raw=term))
 
     return policy
+
+
+def modifier_note(policy: SpfPolicy, name: str) -> str:
+    """What the evaluation-order table prints beside a modifier.
+
+    The table and the gauge are two panels of one report, so they are not
+    allowed to disagree: this is the single place that decides whether a
+    ``redirect=`` spends a lookup, and the budget reads the same answer out of
+    :attr:`SpfPolicy.redirect_ignored`.
+    """
+    if name == "redirect":
+        if policy.redirect_ignored:
+            return "ignored — all matches first"
+        return "1 lookup"
+    return "no lookup"
 
 
 def budget_segments(policy: SpfPolicy | None, limit: int) -> list[str]:

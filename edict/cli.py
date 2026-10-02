@@ -19,7 +19,7 @@ import sys
 from .core import dkim as dkim_mod
 from .core.grade import analyze
 from .core.model import SPF_LOOKUP_LIMIT, Stance, Zone
-from .core.spf import budget_line
+from .core.spf import budget_line, modifier_note
 
 _C = {
     "reset": "\033[0m", "bold": "\033[1m", "dim": "\033[2m",
@@ -96,7 +96,9 @@ def _report_text(zone: Zone, color: bool) -> str:
             cost = "1 lookup" if mech.cost else "no lookup"
             out.append(f"  {mech.rendered:<40} " + _paint(cost, "dim", color))
         for name, val in policy.modifiers.items():
-            out.append(f"  {name}={val}")
+            term = f"{name}={val}"
+            out.append(f"  {term:<40} "
+                       + _paint(modifier_note(policy, name), "dim", color))
         out.append("")
 
     dmarc = zone.primary_dmarc

@@ -83,6 +83,29 @@ def test_an_over_budget_record_shows_overflow_past_the_limit(capsys):
     assert "Over budget" in out
 
 
+def test_the_evaluation_table_says_what_a_modifier_costs(capsys, tmp_path):
+    """Two panels of one report must not disagree about the same term."""
+    path = tmp_path / "redirect.dns"
+    path.write_text('e.example. IN TXT "v=spf1 mx -all redirect=o.example"\n')
+    _, out, _ = run(capsys, str(path), "--no-color")
+    row = [ln for ln in out.splitlines() if "redirect=o.example" in ln][0]
+    assert "ignored — all matches first" in row
+    assert "redirect:o.example" not in out        # never with a colon
+    budget = out.split("SPF lookup budget")[1].split("SPF mechanisms")[0]
+    assert "redirect" not in budget               # it spends nothing here
+
+
+def test_a_redirect_with_no_all_is_billed_in_both_panels(capsys, tmp_path):
+    path = tmp_path / "redirect2.dns"
+    path.write_text('e.example. IN TXT "v=spf1 mx redirect=o.example"\n')
+    _, out, _ = run(capsys, str(path), "--no-color")
+    budget = out.split("SPF lookup budget")[1].split("SPF mechanisms")[0]
+    assert "2. redirect=o.example" in budget
+    row = [ln for ln in out.splitlines()
+           if "redirect=o.example" in ln and "1 lookup" in ln]
+    assert row
+
+
 def test_the_report_lists_every_finding(capsys):
     _, out, _ = run(capsys, _path("wide-open.dns"), "--no-color")
     assert "Findings (" in out

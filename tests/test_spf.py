@@ -7,6 +7,7 @@ from edict.core.spf import (
     budget_line,
     covers_everything,
     ip_prefix_len,
+    modifier_note,
     parse_spf,
 )
 
@@ -97,8 +98,10 @@ def test_only_mechanisms_that_ask_dns_a_question_cost_a_lookup(term, cost):
     assert p(f"v=spf1 {term}").lookup_cost == cost
 
 
-def test_redirect_costs_a_lookup():
-    assert p("v=spf1 redirect=other.example").lookup_cost == 1
+def test_redirect_costs_a_lookup_when_there_is_no_all_to_ignore_it():
+    policy = p("v=spf1 redirect=other.example")
+    assert not policy.redirect_ignored
+    assert policy.lookup_cost == 1
 
 
 def test_exp_costs_nothing_because_it_is_only_read_on_failure():
@@ -124,7 +127,56 @@ def test_the_spenders_are_listed_in_evaluation_order():
 
 def test_a_redirect_appears_last_among_the_spenders():
     policy = p("v=spf1 mx redirect=other.example")
-    assert [m.rendered for m in policy.costly] == ["mx", "redirect:other.example"]
+    assert [m.rendered for m in policy.costly] == ["mx", "redirect=other.example"]
+
+
+def test_a_synthesised_redirect_is_spelled_the_way_spf_spells_it():
+    """``redirect=host``, with an equals sign. ``redirect:host`` is not SPF."""
+    cell = p("v=spf1 mx redirect=other.example").costly[-1]
+    assert cell.rendered == "redirect=other.example"
+    assert ":" not in cell.rendered
+
+
+# RFC 7208 §6.1: "if the record has an all mechanism, the redirect modifier MUST
+# be ignored". A lookup a receiver will never make cannot be spent, and a budget
+# that charges for one is not counting the thing the gauge claims to count.
+
+def test_an_all_mechanism_makes_the_redirect_free():
+    policy = p("v=spf1 mx -all redirect=o.example")
+    assert policy.redirect_ignored
+    assert policy.lookup_cost == 1
+    assert [m.rendered for m in policy.costly] == ["mx"]
+
+
+def test_an_ignored_redirect_cannot_push_a_record_over_budget():
+    text = ("v=spf1 " + " ".join(f"include:s{i}.example" for i in range(10))
+            + " -all redirect=legacy.example")
+    policy = p(text)
+    assert policy.lookup_cost == SPF_LOOKUP_LIMIT
+    assert "redirect" not in " ".join(m.rendered for m in policy.costly)
+
+
+def test_the_all_may_sit_anywhere_in_the_record_to_ignore_a_redirect():
+    # The RFC says "has an all mechanism", not "ends in one".
+    assert p("v=spf1 -all mx redirect=o.example").redirect_ignored
+    assert p("v=spf1 ?all redirect=o.example").redirect_ignored
+
+
+def test_a_record_with_a_redirect_and_no_all_still_pays_for_both():
+    policy = p("v=spf1 mx redirect=other.example")
+    assert not policy.redirect_ignored
+    assert policy.lookup_cost == 2
+
+
+@pytest.mark.parametrize("record,name,note", [
+    ("v=spf1 mx redirect=o.example", "redirect", "1 lookup"),
+    ("v=spf1 mx -all redirect=o.example", "redirect",
+     "ignored — all matches first"),
+    ("v=spf1 exp=why.example -all", "exp", "no lookup"),
+])
+def test_the_evaluation_table_agrees_with_the_budget_about_a_modifier(
+        record, name, note):
+    assert modifier_note(p(record), name) == note
 
 
 # --- addresses ---------------------------------------------------------------

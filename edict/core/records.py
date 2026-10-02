@@ -213,7 +213,39 @@ def _normalise_data(rest: list[tuple[str, bool]]) -> tuple[str, int]:
     return " ".join(t for t, _ in rest).strip(), 1
 
 
-def _classify(owner: str, rtype: str, value: str) -> tuple[RecordKind, str]:
+# Property tags defined for CAA. A bare line is only guessed at as CAA when its
+# middle field is one of these, which is what keeps an ordinary two-or-three
+# word TXT string from being read as a certificate policy.
+_CAA_TAGS = {"issue", "issuewild", "issuemail", "iodef", "contactemail",
+             "contactphone"}
+
+
+def _looks_like_bare_mx(value: str) -> bool:
+    """Is this the shape ``dig +short MX`` prints — ``10 mail.example.com.``?
+
+    Two fields: a preference a zone can actually hold, and a host name. The
+    host must carry a dot, or be the bare ``.`` of a null MX, which is what
+    separates an MX from a TXT string that happens to start with a number.
+    """
+    bits = value.split()
+    if len(bits) != 2 or not bits[0].isdigit() or int(bits[0]) > 65535:
+        return False
+    host = bits[1]
+    if host == ".":
+        return True        # a null MX: the deliberate "no mail here"
+    return bool(_OWNER.match(host)) and "." in host.rstrip(".")
+
+
+def _looks_like_bare_caa(value: str) -> bool:
+    """Is this the shape ``dig +short CAA`` prints — ``0 issue "a.example"``?"""
+    bits = value.split(None, 2)
+    if len(bits) != 3 or not bits[0].isdigit() or int(bits[0]) > 255:
+        return False
+    return bits[1].lower() in _CAA_TAGS and bool(bits[2].strip())
+
+
+def _classify(owner: str, rtype: str, value: str,
+              quoted: bool = False) -> tuple[RecordKind, str]:
     """Decide what a record is, and lift its ``v=`` tag if it has one."""
     low_owner = owner.rstrip(".").lower()
     tag = ""
@@ -243,6 +275,17 @@ def _classify(owner: str, rtype: str, value: str) -> tuple[RecordKind, str]:
         return RecordKind.DMARC, tag
 
     if rtype in ("", "TXT", "SPF"):
+        # A line that announced no RR type at all may still be an MX or a CAA:
+        # that is all ``dig +short`` prints for either. Only an unquoted line
+        # is guessed at — a fully quoted string is TXT data, whatever it
+        # happens to look like — and only these two exact shapes, because the
+        # alternative is telling a reader there was no MX among records in
+        # which they can plainly see one.
+        if not rtype and not quoted:
+            if _looks_like_bare_mx(value):
+                return RecordKind.MX, tag
+            if _looks_like_bare_caa(value):
+                return RecordKind.CAA, tag
         return RecordKind.TXT, tag
     return RecordKind.OTHER, tag
 
@@ -256,9 +299,11 @@ def parse_line(line: str, line_no: int = 1) -> RawRecord | None:
     value, chunks = _normalise_data(rest)
     if not value:
         return None
-    kind, tag = _classify(owner, rtype, value)
+    quoted = bool(rest) and all(q for _, q in rest)
+    kind, tag = _classify(owner, rtype, value, quoted=quoted)
     return RawRecord(kind=kind, owner=owner, value=value, line_no=line_no,
-                     raw=line.strip(), rtype=rtype, tag=tag, chunks=chunks)
+                     raw=line.strip(), rtype=rtype, tag=tag, chunks=chunks,
+                     quoted=quoted)
 
 
 def parse_records(text: str) -> list[RawRecord]:

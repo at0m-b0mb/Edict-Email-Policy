@@ -174,6 +174,50 @@ def test_a_mixed_quoted_record_is_not_treated_as_chunked():
     assert rec.value == '0 issue letsencrypt.org'
 
 
+# --- the shapes `dig +short` prints for MX and CAA ---------------------------
+# No owner, no RR type, nothing but the data. Typing these on sight is what
+# keeps the grader from telling a reader they pasted no MX when they plainly
+# did — but only an unquoted line is guessed at, because a quoted string is TXT
+# data whatever it happens to look like.
+
+@pytest.mark.parametrize("line,pref,host", [
+    ("10 mail.example.com.", 10, "mail.example.com"),
+    ("0 .", 0, "."),
+    ("20 alt2.aspmx.l.google.com.", 20, "alt2.aspmx.l.google.com"),
+])
+def test_a_bare_dig_short_mx_line_is_typed_as_an_mx(line, pref, host):
+    rec = parse_line(line)
+    assert rec.kind is RecordKind.MX
+    mx = parse_mx(rec)
+    assert (mx.preference, mx.host) == (pref, host)
+
+
+@pytest.mark.parametrize("line,tag,value", [
+    ('0 issue "letsencrypt.org"', "issue", "letsencrypt.org"),
+    ('128 issuewild "sectigo.com"', "issuewild", "sectigo.com"),
+    ('0 iodef "mailto:a@b.example"', "iodef", "mailto:a@b.example"),
+])
+def test_a_bare_dig_short_caa_line_is_typed_as_a_caa(line, tag, value):
+    rec = parse_line(line)
+    assert rec.kind is RecordKind.CAA
+    caa = parse_caa(rec)
+    assert (caa.tag, caa.value) == (tag, value)
+
+
+@pytest.mark.parametrize("line", [
+    '"10 mail.example.com."',            # quoted: TXT data, not an MX
+    '"0 issue \\"letsencrypt.org\\""',   # quoted: TXT data, not a CAA
+    "10 reasons",                        # a host name has a dot in it
+    "v=spf1 -all",                       # a policy, which wins on its v= tag
+    "0 frobnicate \"x.example\"",        # not a CAA property tag
+    "10 mail.example.com. extra",        # too many fields for an MX
+    "70000 mail.example.com.",           # not a preference a zone can hold
+])
+def test_a_line_that_is_not_one_of_those_shapes_is_not_guessed_at(line):
+    assert parse_line(line).kind is not RecordKind.MX
+    assert parse_line(line).kind is not RecordKind.CAA
+
+
 # --- which domain ------------------------------------------------------------
 
 @pytest.mark.parametrize("owner,apex", [

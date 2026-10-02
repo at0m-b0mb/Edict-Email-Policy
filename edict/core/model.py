@@ -104,6 +104,11 @@ class RawRecord:
     rtype: str = ""         # the RR type token, when the line carried one
     tag: str = ""           # the v= value, e.g. "spf1", "DMARC1", "STSv1"
     chunks: int = 1         # how many quoted strings were joined
+    # Was the data a quoted string? ``dig +short TXT`` prints one, and a quoted
+    # string is TXT data whatever is inside it — so a record with no RR type is
+    # still *typed* when it arrived in quotes, and only an unquoted fragment is
+    # a line Edict genuinely could not identify.
+    quoted: bool = False
 
 
 @dataclass(frozen=True)
@@ -115,6 +120,10 @@ class Mechanism:
     value: str              # the argument; "" for a bare `all`, `a` or `mx`
     cost: int               # DNS lookups this term costs: 1 or 0
     raw: str = ""
+    # True for the term Edict synthesises to represent a ``redirect=`` modifier
+    # on the gauge. A modifier is written ``name=value``, never ``name:value``,
+    # and a reader who copies the gauge's text has to get valid SPF back.
+    is_modifier: bool = False
 
     @property
     def rendered(self) -> str:
@@ -128,7 +137,8 @@ class Mechanism:
         """
         if self.raw:
             return self.raw
-        body = f"{self.kind}:{self.value}" if self.value else self.kind
+        sep = "=" if self.is_modifier else ":"
+        body = f"{self.kind}{sep}{self.value}" if self.value else self.kind
         return body if self.qualifier == "+" else f"{self.qualifier}{body}"
 
     @property
@@ -162,10 +172,23 @@ class SpfPolicy:
         return None
 
     @property
+    def redirect_ignored(self) -> bool:
+        """Is this record's ``redirect=`` modifier dead text?
+
+        RFC 7208 §6.1: "if the record has an ``all`` mechanism, the
+        ``redirect`` modifier MUST be ignored". ``all`` always matches, so the
+        receiver never reaches the point of consulting the redirect — it never
+        resolves it, and it never charges a lookup for it. Anywhere in the
+        record is enough; the RFC says *has*, not *ends in*.
+        """
+        return ("redirect" in self.modifiers
+                and any(m.is_all for m in self.mechanisms))
+
+    @property
     def lookup_cost(self) -> int:
         """DNS lookups this record costs *before* any include is followed."""
         total = sum(m.cost for m in self.mechanisms)
-        if "redirect" in self.modifiers:
+        if "redirect" in self.modifiers and not self.redirect_ignored:
             total += 1
         return total
 
@@ -173,11 +196,12 @@ class SpfPolicy:
     def costly(self) -> list[Mechanism]:
         """The terms that spend a lookup, in the order they are evaluated."""
         spenders = [m for m in self.mechanisms if m.cost]
-        if "redirect" in self.modifiers:
+        if "redirect" in self.modifiers and not self.redirect_ignored:
             # A modifier, not a mechanism — but it costs a lookup like one, so
             # it gets a cell on the gauge. No raw text: it was never a term.
             spenders.append(Mechanism("+", "redirect",
-                                      self.modifiers["redirect"], 1, ""))
+                                      self.modifiers["redirect"], 1, "",
+                                      is_modifier=True))
         return spenders
 
     @property

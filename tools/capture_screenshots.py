@@ -31,7 +31,9 @@ SHOTS = [
     ("over-budget.dns", theme.LIGHT),
     ("over-budget.dns", theme.DARK),
     ("monitoring-only.dns", theme.LIGHT),
+    ("monitoring-only.dns", theme.DARK),
     ("subdomain-gap.dns", theme.LIGHT),
+    ("subdomain-gap.dns", theme.DARK),
 ]
 
 
