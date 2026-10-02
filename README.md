@@ -18,7 +18,7 @@ ever resolving a name.
 ![Python](https://img.shields.io/badge/Python-3.10%2B-7A5D18?style=flat-square)
 ![PyQt6](https://img.shields.io/badge/UI-PyQt6-7A5D18?style=flat-square)
 ![Offline](https://img.shields.io/badge/network-never-2C6249?style=flat-square)
-![Tests](https://img.shields.io/badge/tests-514%20passing-2C6249?style=flat-square)
+![Tests](https://img.shields.io/badge/tests-515%20passing-2C6249?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-847D6E?style=flat-square)
 
 </div>
@@ -234,7 +234,7 @@ python3 -m pip install -r requirements-dev.txt
 python3 -m pytest -q
 ```
 
-514 tests cover the record reader (including the trap where `mx`, `a` and `ptr`
+515 tests cover the record reader (including the trap where `mx`, `a` and `ptr`
 name both an SPF mechanism and a DNS record type), the SPF budget arithmetic,
 the DMARC tag reader, the DER walk that recovers a key's size from `p=`, the
 full grading pipeline against the sample set, the command line in both output
@@ -259,7 +259,7 @@ edict/
     main_window.py   the grader itself
   cli.py           the same engine on the command line
 samples/           five synthetic zones spanning A+ to F
-tests/             514 tests, including the contrast suite
+tests/             515 tests, including the contrast suite
 tools/             screenshot capture and repository art
 ```
 

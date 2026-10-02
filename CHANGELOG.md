@@ -59,7 +59,7 @@ First release.
 ### Engineering
 - The engine (`edict.core`) is pure standard library — no third-party imports,
   no network, no sockets, no name resolution of any kind.
-- 514 tests across the record reader, the SPF budget arithmetic, the DMARC tag
+- 515 tests across the record reader, the SPF budget arithmetic, the DMARC tag
   reader, the DER key-size walk, the full grading pipeline, the command line in
   both output modes, and a WCAG-AA contrast suite covering every text/background
   pairing in both themes.

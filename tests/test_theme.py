@@ -23,8 +23,10 @@ WASHES = {
 
 
 def _required(token: str) -> float:
-    # ink_faint is only used large or decoratively -> large-text threshold.
-    return 3.0 if token == "ink_faint" else 4.5
+    # Every text token carries prose somewhere -- the honesty ceiling note
+    # and each finding's detail among them -- so all of them are held to the
+    # AA threshold for normal text. No exemptions.
+    return 4.5
 
 
 @pytest.mark.parametrize("mode", [theme.LIGHT, theme.DARK])

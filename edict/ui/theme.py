@@ -106,7 +106,7 @@ PALETTE: dict[str, Pair] = {
     # ink
     "ink":           Pair("#1B1813", "#F3F0E9"),
     "ink_muted":     Pair("#575144", "#A29C91"),
-    "ink_faint":     Pair("#847D6E", "#6B675F"),
+    "ink_faint":     Pair("#6B6554", "#8C877C"),
     "ink_inverse":   Pair("#FFFFFF", "#0A0A09"),
 
     # gold, twice over
