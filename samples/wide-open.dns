@@ -1,0 +1,16 @@
+; A domain that publishes an invitation.
+;
+; +all is one character away from -all and means the opposite of it: every
+; sender on the internet is authorised to use this name. ptr has been
+; deprecated for over a decade. There is no DMARC record, so nothing ties
+; either check to the From address a person reads. And the only DKIM selector
+; is a 1024-bit key still flagged t=y, left over from a rollout that was never
+; finished.
+;
+; Expected: F.
+
+openhouse.example.      300 IN MX  10 mail.openhouse.example.
+
+openhouse.example.      300 IN TXT "v=spf1 a mx ptr +all"
+
+default._domainkey.openhouse.example. 300 IN TXT "v=DKIM1; k=rsa; t=y; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCx6BW5HxfpP9JTMEOYB51pCD2PN6+eTg3FmmE3iz3ajYdOqOlBrJFZFpn9HdPmH1+VLLmNyijgznkNArpo4rKSKF8HiWX1opn8g6t0hCoJRJEVNh9COJoxn4VzyfJdyZOQ8muC/pFTKReFfggx5VVOvY7JofgDhe09fJ7HCBq0TQIDAQAB"

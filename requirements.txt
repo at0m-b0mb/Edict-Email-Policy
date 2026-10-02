@@ -1,0 +1,2 @@
+# The graphical grader. The engine and the CLI need nothing but the standard library.
+PyQt6>=6.5

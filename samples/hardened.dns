@@ -1,0 +1,27 @@
+; A domain that finished the job.
+;
+; Pasted the way a registrar exports a zone: owner name, TTL, class, type.
+; SPF ends in -all and spends two of its ten lookups. DMARC is at reject for
+; the apex and, explicitly, for every subdomain beneath it. The DKIM key is
+; 2048-bit and wrapped across two lines in parentheses, the way a real zone
+; file holds a string too long for one line. CAA names the only authority
+; allowed to issue for the name.
+;
+; Expected: A+ — and still carrying the caveat that Edict never resolved any
+; of this.
+
+edictmail.example.      300 IN MX    10 mx1.edictmail.example.
+edictmail.example.      300 IN MX    20 mx2.edictmail.example.
+
+edictmail.example.      300 IN TXT   "v=spf1 mx include:_spf.edictmail.example -all"
+
+_dmarc.edictmail.example. 300 IN TXT "v=DMARC1; p=reject; sp=reject; adkim=s; aspf=s; fo=1; rua=mailto:dmarc@edictmail.example; ruf=mailto:forensics@edictmail.example"
+
+s2026._domainkey.edictmail.example. 300 IN TXT ( "v=DKIM1; k=rsa; h=sha256; "
+    "p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAk6u0o2xHkU06p3GSYRhimchFSDZlB1GqRG79NOHoBLbb3vurqi/ADlQapF2uHh0Dn/pcRNLJyOKm+62dHF1VKzY1GcZN5e/6d7w5Tm4ekzQQGiVKNVEISmwb/NZnZZ5hyovBFqMuaQg9I1QiU3aWsslJg3N4wCszMQ1ww13T7PWJjlPgxRejWnH5ZbkWv8NVKTuouTF7O4ZBV4kWEgLRJXAflwb4mmZDVDvNBDZeUufIc4P0sUKd4XxHVxhJ3Js06uNzLTjBFdaaH3qlNur6KIDmtdCp2TZQDGvfDXeWZo1b0htq7Im3pooKyYT3GrJH6It1kTHbbjLY3LNflMZizQIDAQAB" )
+
+edictmail.example.      300 IN CAA   0 issue "letsencrypt.org"
+edictmail.example.      300 IN CAA   0 iodef "mailto:security@edictmail.example"
+
+_mta-sts.edictmail.example. 300 IN TXT "v=STSv1; id=20260401000000Z"
+_smtp._tls.edictmail.example. 300 IN TXT "v=TLSRPTv1; rua=mailto:tlsrpt@edictmail.example"

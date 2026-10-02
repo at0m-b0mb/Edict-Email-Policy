@@ -1,0 +1,20 @@
+; The apex is hard and the edges are soft.
+;
+; This domain did the difficult part: -all on SPF and p=reject on DMARC. Then
+; it left three doors open. sp=none exempts every subdomain, so a forger does
+; not need the apex — mail from billing.gap.example reads as you to a person.
+; pct=25 means three failures in four are delivered anyway. There is no rua,
+; so nobody is watching any of it. And the DKIM key, generous as its size is,
+; is still flagged t=y, which tells receivers to ignore the signature.
+;
+; Expected: a low grade on a policy that looks, at a glance, finished.
+
+gap.example.            600 IN MX  10 mail.gap.example.
+
+gap.example.            600 IN TXT "v=spf1 mx include:_spf.gap.example -all"
+
+_dmarc.gap.example.     600 IN TXT "v=DMARC1; p=reject; sp=none; pct=25"
+
+k1._domainkey.gap.example. 600 IN TXT "v=DKIM1; k=rsa; t=y; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA7pjDOE/Y6TXcL19z0oKJFEqP28jLyecxTLmgQ2HOC/QNnkDSvfCer7kMdV79xOVnRVsjG8bqKmmGnXhm22aB2cnBhxP6HRLe49taiMVqraVud88lw1y94h89HAU2iMObJMp1rEfI1eNLy4r7BRku4x8c8aw/zzwEdOVT2+7H/yaNPaqz99GoT1VZK9PXcSGY5DbyJr8UakEZZVEfuMuHVKY9PSSJHhXXl/L6nGeH/4Gcazoh18uamNHFAPL1imU1aCbQxQ98bG9ZrupOpQIC34iUna3LhfaJiKOLzks8JrR4ZWQWs593zVaI1TJHzu/HTKZzU9gktEtBwVbPJkyiQwIDAQAB"
+
+gap.example.            600 IN CAA 0 issue "sectigo.com"

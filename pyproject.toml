@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "edict-policy"
+version = "1.0.0"
+description = "What your domain declares — an offline grader for published SPF, DMARC, DKIM, MX and CAA records."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "at0m-b0mb" }]
+keywords = ["spf", "dmarc", "dkim", "caa", "dns", "email", "spoofing", "security", "policy"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: X11 Applications :: Qt",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Topic :: Communications :: Email",
+    "Topic :: Internet :: Name Service (DNS)",
+    "Topic :: Security",
+]
+dependencies = ["PyQt6>=6.5"]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
+
+[project.urls]
+Homepage = "https://github.com/at0m-b0mb/Edict"
+Source = "https://github.com/at0m-b0mb/Edict"
+
+[project.scripts]
+edict = "edict.cli:main"
+
+[project.gui-scripts]
+edict-gui = "edict.app:main"
+
+[tool.setuptools]
+packages = ["edict", "edict.core", "edict.ui"]

@@ -1,0 +1,20 @@
+; Eleven lookups where ten are allowed.
+;
+; Every other part of this policy is defensible. The SPF record is not: a, mx
+; and nine includes come to eleven DNS lookups, and a receiver stops counting
+; at ten and returns permerror — which most treat as no SPF record at all. So
+; this domain's carefully assembled sender list protects nothing.
+;
+; Edict counts eleven because it counts what it can see. It does not follow a
+; single one of those includes, and each of them may spend lookups of its own,
+; so eleven is the floor.
+;
+; Expected: a low grade, earned entirely by one line.
+
+budget.example.         300 IN MX  10 mail.budget.example.
+
+budget.example.         300 IN TXT "v=spf1 a mx include:_spf.crm.example include:_spf.invoices.example include:_spf.helpdesk.example include:_spf.newsletter.example include:_spf.payroll.example include:_spf.surveys.example include:_spf.events.example include:_spf.status.example include:_spf.legacy.example ~all"
+
+_dmarc.budget.example.  300 IN TXT "v=DMARC1; p=reject; rua=mailto:dmarc@budget.example"
+
+sel1._domainkey.budget.example. 300 IN TXT "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA3GepsYwSV3gph/yFmiv/Hm3oV/jDE573cMrfX/1+fzls0eFeGBrxGkWxmTENaAdcExttYzVIMYmXRDNhi8VqYeQDaZfQ9n+d7yoKOFb0WhdG9ooFC75XhY5kdDREXj3svqBAgGiMsetNXAXEIedu0bsPc1+Bjtwz6sQxViQrEUcwzKynLweyP6mdSnC/8huD/hNoA5Xq63qo1jbYLdhyBQHw7nyIM9nQFzcNXHrgZSTX5ck6qvJ716f0Yhnh6uMHBXaLQRme6BX26/17ZWHw0iJK8nxVLkeLGGD4gZjEqjmugD7DF+znDISOgXsA1Q2V5AOXgmflI8nuczWgFmLizwIDAQAB"

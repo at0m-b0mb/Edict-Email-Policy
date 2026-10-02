@@ -1,0 +1,20 @@
+; The shape most domains are actually in.
+;
+; There is an SPF record, and it only discourages. There is a DMARC record,
+; and it only watches. Reports are going somewhere, which is the part that
+; matters, but nothing has moved past monitoring in a long time — and there
+; is no CAA record at all.
+;
+; Expected: a middling grade. Everything here is published; almost none of it
+; asks a receiver to do anything.
+
+typical.example.        3600 IN MX  10 inbound1.mailhost.example.
+typical.example.        3600 IN MX  20 inbound2.mailhost.example.
+
+typical.example.        3600 IN TXT "v=spf1 include:_spf.mailhost.example include:bulk.sender.example ~all"
+
+_dmarc.typical.example. 3600 IN TXT "v=DMARC1; p=none; aspf=r; adkim=r; rua=mailto:dmarc@typical.example"
+
+mh1._domainkey.typical.example. 3600 IN TXT "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA4UW3AQnncYQZkEafxUySoaByoPbeg+WzLV7SoOXmOOLuGNhRC78gBffL+SlFWk+0fgf1gNyYgUnfuZOxeLlyLnJqROJBHLy7wLnWWj+iYXCFuGqeCWgjqagt4Pe1O9gi1ALvArcaa7S+0emYdwbED2z7mvUg33iTeeFXWlOnz6Bm+x2I3mw6nDE2Fl+F4RbJpIrFNtsczY3BMMXXnHsO9KE3pdJ+iDfSPMjZMDOY/cRTdDothxz8aeYtsX8JPG15c4faZ9nS711xUla6bYDVWA5g35L4Ix2ZZeOCy608O6EyK32XMrXbw9+BR1No0O8ceAxLFqUQWfpisrvRw42+MQIDAQAB"
+
+typical.example.        3600 IN TXT "google-site-verification=3qW1nQ8pLk7xZr2vUa0bYh4Mc6Jd9FeGsT5uNi1oKpQ"
